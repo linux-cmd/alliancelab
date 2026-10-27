@@ -23,7 +23,7 @@ The public deployment at https://alliancelab.vercel.app was verified on 2026-10-
 - The upgrade flow reported zero uncaught application errors. HTTP 200 and the configured Content-Security-Policy were checked at the public origin.
 - The GitHub check for the same source commit passed: [workflow run 40442252219](https://github.com/linux-cmd/alliancelab/actions/runs/40442252219).
 
-The final release commit adds this verification record without changing application code. Its tag pipeline repeats the checks before packaging.
+The release gates also verify that keyboard skip navigation preserves the current screen and focuses its content. The final tag pipeline repeats the checks before packaging.
 
 ## Device limits
 

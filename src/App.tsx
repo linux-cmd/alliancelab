@@ -419,7 +419,14 @@ function WorkspaceApp({ initial }: { initial: LoadedWorkspace }) {
     <WorkspaceContext.Provider
       value={{ workspace, setData, setPreferences, setDraft, clearDraft, replaceDrafts, notify }}
     >
-      <a className="skip-link" href="#main-content">
+      <a
+        className="skip-link"
+        href="#main-content"
+        onClick={(event) => {
+          event.preventDefault();
+          document.getElementById('main-content')?.focus();
+        }}
+      >
         Skip to content
       </a>
       {mobileMenu && (

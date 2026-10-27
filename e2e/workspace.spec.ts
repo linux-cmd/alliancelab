@@ -228,6 +228,11 @@ test('all screens fit the viewport and have no serious automated accessibility v
   ]) {
     await navigate(page, name);
     await expect(page.locator('h1')).toBeVisible();
+    const url = page.url();
+    await page.getByRole('link', { name: 'Skip to content', exact: true }).focus();
+    await page.getByRole('link', { name: 'Skip to content', exact: true }).click();
+    await expect(page.locator('#main-content')).toBeFocused();
+    expect(page.url()).toBe(url);
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
       name + ' overflow',
