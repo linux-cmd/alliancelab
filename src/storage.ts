@@ -128,7 +128,7 @@ export async function saveWorkspace(
         return;
       }
       try {
-        if (old && JSON.stringify(old.backup.data) !== JSON.stringify(workspace.data))
+        if (old?.backup?.data && JSON.stringify(old.backup.data) !== JSON.stringify(workspace.data))
           store.put(old, 'previous');
         store.put(
           {

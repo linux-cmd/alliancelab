@@ -57,17 +57,23 @@ export function nextAssignment(
   scout: string,
   after = 0,
 ): Assignment | undefined {
-  return event.schedule
-    .filter((row) => `${row.alliance}-${row.station}` === station && row.match > after)
-    .sort((a, b) => a.match - b.match)
-    .find(
-      (row) =>
-        !matches.some(
-          (match) =>
-            match.eventId === event.id &&
-            match.team === row.team &&
-            match.match === row.match &&
-            match.scout.trim().toLowerCase() === scout.trim().toLowerCase(),
-        ),
-    );
+  const identity = scout.trim().toLowerCase();
+  const recorded = new Set(
+    matches
+      .filter(
+        (match) => match.eventId === event.id && match.scout.trim().toLowerCase() === identity,
+      )
+      .map((match) => `${match.match}:${match.team}`),
+  );
+  let next: Assignment | undefined;
+  for (const row of event.schedule) {
+    if (
+      `${row.alliance}-${row.station}` !== station ||
+      row.match <= after ||
+      recorded.has(`${row.match}:${row.team}`)
+    )
+      continue;
+    if (!next || row.match < next.match) next = row;
+  }
+  return next;
 }
