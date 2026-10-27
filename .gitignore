@@ -7,3 +7,11 @@ test-results/
 .env.*
 !.env.example
 .DS_Store
+*.tsbuildinfo
+browser-*.json
+browser-*.log
+build.log
+image-chunks/
+screenshot-chunks/
+export-chunks/
+overview-desktop.png

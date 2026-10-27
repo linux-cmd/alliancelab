@@ -1,0 +1,71 @@
+name: Check and release
+
+on:
+  push:
+    branches: [main, 'release/**']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      version: ${{ steps.version.outputs.value }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm audit --audit-level=high
+      - run: npm run check
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - id: version
+        run: echo "value=$(node -p 'JSON.parse(require(\"fs\").readFileSync(\"package.json\", \"utf8\")).version')" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: production-web
+          path: dist/
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: browser-failure-evidence
+          path: |
+            playwright-report/
+            test-results/
+
+  release:
+    needs: check
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.check.outputs.version == '1.0.0'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: production-web
+          path: dist
+      - name: Package static web release
+        run: |
+          cd dist
+          zip -r ../alliancelab-v1.0.0-web.zip .
+          cd ..
+          sha256sum alliancelab-v1.0.0-web.zip > SHA256SUMS.txt
+      - name: Publish v1.0.0 once
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view v1.0.0 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create v1.0.0 alliancelab-v1.0.0-web.zip SHA256SUMS.txt --target "$GITHUB_SHA" --title "AllianceLab v1.0.0" --notes-file RELEASE_NOTES.md --repo "$GITHUB_REPOSITORY"
+          fi
