@@ -13,3 +13,6 @@
 @media print{.sidebar,.topbar,.footer,.toast,.heading-actions,.button,.text-button,.icon-button,.tab-bar,.demo-banner,.skip-link{display:none!important}.app-main{margin:0}.app-main main{padding:0}.panel,.hero-strip{break-inside:avoid;box-shadow:none}.planner-grid{grid-template-columns:1fr}.priorities{position:static}.table-scroll{overflow:visible}body{background:white}.modal{position:static;max-height:none}.page-heading h1{font-size:28px}}
 
 .r3{color:#335025}
+
+.mobile-match-log{display:none}
+@media(max-width:680px){.match-log>.table-scroll{display:none}.mobile-match-log{display:flex;flex-direction:column;gap:13px}.mobile-match-card{border:1px solid #e4eadb;border-radius:9px;padding:15px;background:#fcfdf9}.mobile-match-card>div:first-child{display:flex;align-items:center;gap:11px}.mobile-match-card>div:first-child>span:nth-child(2){flex:1;min-width:0}.mobile-match-card strong{display:block;font-size:12px;color:#405b37}.mobile-match-card small{display:block;font-size:10px;color:#66775a;margin-top:5px}.mobile-match-actions{display:flex;align-items:center;justify-content:space-between;border-top:1px solid #e7eddf;margin-top:14px;padding-top:12px;gap:15px}.mobile-match-actions .button{min-height:42px}.mobile-match-actions .icon-button{min-width:42px;min-height:42px}}

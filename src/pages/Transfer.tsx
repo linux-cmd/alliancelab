@@ -31,7 +31,7 @@ export default function Transfer({ event }: { event?: ScoutEvent }) {
   const [paste, setPaste] = useState('');
   useEffect(() => {
     let active = true; setQr(''); setQrError('');
-    if (parts[part]) QRCode.toDataURL(parts[part], { width: 420, margin: 3, errorCorrectionLevel: 'M', color: { dark: '#172b26', light: '#ffffff' } }).then(url => { if (active) { setQr(url); setQrPart(parts[part]); } }).catch(() => { if (active) setQrError('This QR frame could not be generated. Export a backup instead.'); });
+    if (parts[part]) QRCode.toDataURL(parts[part], { scale: 8, margin: 4, errorCorrectionLevel: 'M', color: { dark: '#172b26', light: '#ffffff' } }).then(url => { if (active) { setQr(url); setQrPart(parts[part]); } }).catch(() => { if (active) setQrError('This QR frame could not be generated. Export a backup instead.'); });
     return () => { active = false; };
   }, [parts, part]);
   function exportBackup(eventOnly = false) {
