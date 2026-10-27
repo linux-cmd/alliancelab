@@ -15,7 +15,15 @@ The GitHub `check` job repeats the formatting, unit, build, dependency, and full
 
 ## Deployment and upgrade check
 
-The release procedure preserves a browser profile running v1 with 30 fictional observations and its installed worker, then verifies the new public deployment, app update, automatic migration, and an offline reload. Deployment results are recorded here before the stable tag is published.
+The public deployment at https://alliancelab.vercel.app was verified on 2026-10-27 UTC (2026-10-26 America/Chicago), using source commit `115fcb5d82d61f515ead37343c66d04a8bc21db9`.
+
+- The full 40-case desktop/mobile browser suite passed against the public HTTPS origin, with no retries, skipped cases, or uncaught application exceptions.
+- A preserved v1 browser profile with its installed worker and 30 fictional observations completed the app update and migrated automatically.
+- Saving another observation produced 31 persisted records. An offline reload and navigation to Teams retained all 31, while the original v1 localStorage copy still contained its original 30.
+- The upgrade flow reported zero uncaught application errors. HTTP 200 and the configured Content-Security-Policy were checked at the public origin.
+- The GitHub check for the same source commit passed: [workflow run 40442252219](https://github.com/linux-cmd/alliancelab/actions/runs/40442252219).
+
+The final release commit adds this verification record without changing application code. Its tag pipeline repeats the checks before packaging.
 
 ## Device limits
 
