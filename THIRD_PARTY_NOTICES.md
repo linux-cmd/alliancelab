@@ -12,3 +12,5 @@ Bundled fonts:
 The full font license texts are copied to `public/licenses/` and shipped with the web build.
 
 FIRST, FRC, and referenced team names belong to their respective owners. Demo observations are fictional and do not describe actual team performance or endorse any team.
+
+The full license notices for the runtime libraries and bundled scheduler/pathfinding dependencies are included in `public/licenses/runtime-licenses.txt` and distributed with the web build.
