@@ -1,0 +1,83 @@
+import { useEffect, useState } from 'react';
+import { Plus, Minus, Save, Search, Pencil, Trash2, ClipboardList, Check, Wrench, RotateCcw } from 'lucide-react';
+import { useWorkspace } from '../context';
+import { MatchSchema, newId, now, matchKey, conflicts } from '../domain';
+import type { Match, Pit, ScoutEvent } from '../domain';
+import { PageHeading, PanelTitle, Tag, Empty, Confirm, fmt } from '../components/ui';
+
+function freshMatch(event: ScoutEvent, scout: string): Match {
+  return { id: newId(), eventId: event.id, team: event.teams[0]?.number || 0, match: 1, scout, alliance: 'red', values: Object.fromEntries(event.metrics.map(m => [m.id, 0])), disabled: false, defense: 0, notes: '', createdAt: now(), updatedAt: now() };
+}
+export default function Scout({ event }: { event: ScoutEvent }) {
+  const { workspace, setData, setPreferences, setDraft, clearDraft, notify } = useWorkspace();
+  const [tab, setTab] = useState<'match' | 'pit'>('match');
+  const [editing, setEditing] = useState<string | null>(null);
+  const [form, setForm] = useState<Match>(() => {
+    const parsed = MatchSchema.safeParse(workspace.drafts['match:' + event.id]);
+    return parsed.success && parsed.data.eventId === event.id && event.teams.some(t => t.number === parsed.data.team) && event.metrics.every(m => m.id in parsed.data.values) ? parsed.data : freshMatch(event, workspace.preferences.scout);
+  });
+  const [error, setError] = useState('');
+  const [query, setQuery] = useState('');
+  const [limit, setLimit] = useState(30);
+  const [deleting, setDeleting] = useState<Match | null>(null);
+  const [discard, setDiscard] = useState(false);
+  const rows = workspace.data.matches.filter(m => m.eventId === event.id);
+  const disputes = conflicts(rows);
+  useEffect(() => {
+    if (editing) return;
+    const timer = setTimeout(() => setDraft('match:' + event.id, form), 350);
+    return () => clearTimeout(timer);
+  }, [form, editing, event.id, setDraft]);
+  function update(patch: Partial<Match>) { setForm(old => ({ ...old, ...patch })); setError(''); }
+  function value(metric: string, number: number, max = 10000) { if (Number.isFinite(number)) update({ values: { ...form.values, [metric]: Math.max(0, Math.min(max, Math.floor(number))) } }); }
+  function reset() { setForm(freshMatch(event, workspace.preferences.scout)); setEditing(null); setError(''); clearDraft('match:' + event.id); }
+  function save(e: React.FormEvent) {
+    e.preventDefault();
+    const result = MatchSchema.safeParse({ ...form, scout: form.scout.trim(), updatedAt: now() });
+    if (!result.success) { setError(result.error.issues[0].message); return; }
+    if (!event.teams.some(t => t.number === form.team)) { setError('Select a team from the event roster.'); return; }
+    if (rows.some(r => r.id !== editing && r.team === form.team && r.match === form.match && r.scout.toLowerCase() === form.scout.trim().toLowerCase())) {
+      setError('You already recorded this team and match under this scout name. Edit that observation in the log below.'); return;
+    }
+    const record = result.data;
+    setData({ ...workspace.data, matches: editing ? workspace.data.matches.map(m => m.id === editing ? record : m) : [...workspace.data.matches, record] });
+    setPreferences({ scout: record.scout });
+    clearDraft('match:' + event.id);
+    notify(editing ? 'Observation updated.' : 'Match Q' + record.match + ' saved for team ' + record.team + '.');
+    setEditing(null);
+    setForm({ ...freshMatch(event, record.scout), team: record.team, match: record.match + 1 });
+    setError('');
+  }
+  function edit(record: Match) { setTab('match'); setEditing(record.id); setForm(structuredClone(record)); setError(''); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+  const filtered = [...rows].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).filter(m => [m.team, 'Q' + m.match, m.scout, m.notes].join(' ').toLowerCase().includes(query.toLowerCase()));
+  return <>
+    <PageHeading eyebrow="FROM THE STANDS" title="Every detail makes a difference." description="Capture what happened while it’s still fresh. Your draft stays on this device."/>
+    <div className="tab-bar" aria-label="Observation type"><button className={tab === 'match' ? 'active' : ''} onClick={() => setTab('match')}><ClipboardList size={16}/>Match scouting</button><button className={tab === 'pit' ? 'active' : ''} onClick={() => setTab('pit')}><Wrench size={16}/>Pit scouting</button></div>
+    {tab === 'pit' ? <PitForm event={event}/> : !event.teams.length ? <section className="panel"><Empty title="Add your first teams">Open Event settings to add team numbers to the roster, then return here to start scouting.</Empty></section> : <form className="scout-layout" onSubmit={save}>
+      <div className="stack"><section className="panel"><PanelTitle title={editing ? 'Edit match observation' : 'New match observation'} action={<Tag tone="green">{editing ? 'Editing saved record' : 'Draft autosaved'}</Tag>}/><div className="form-grid"><label>Team<select aria-label="Match team" required value={form.team} onChange={e => update({ team: Number(e.target.value) })}>{event.teams.map(t => <option key={t.number} value={t.number}>{t.number}{t.name ? ' · ' + t.name : ''}</option>)}</select></label><label>Qualification match<input required type="number" min={1} max={9999} value={form.match} onChange={e => update({ match: Number(e.target.value) })}/></label><label>Scout name<input required maxLength={100} autoComplete="nickname" value={form.scout} onChange={e => update({ scout: e.target.value })} placeholder="Your name"/></label><fieldset className="field"><legend>Alliance</legend><div className="segmented"><button type="button" aria-pressed={form.alliance === 'red'} className={form.alliance === 'red' ? 'red selected' : ''} onClick={() => update({ alliance: 'red' })}><i className="red-dot"/>Red</button><button type="button" aria-pressed={form.alliance === 'blue'} className={form.alliance === 'blue' ? 'blue selected' : ''} onClick={() => update({ alliance: 'blue' })}><i className="blue-dot"/>Blue</button></div></fieldset></div></section>
+      {(['auto', 'teleop', 'endgame'] as const).filter(phase => event.metrics.some(m => m.phase === phase)).map((phase, phaseIndex) => <section className="panel" key={phase}><div className="phase-title"><span>{String(phaseIndex + 1).padStart(2, '0')}</span><div><h2>{{ auto: 'Autonomous', teleop: 'Teleoperated', endgame: 'Endgame' }[phase]}</h2><p>{{ auto: 'What did the robot do on its own?', teleop: 'Watch the cycles, not just the highlight.', endgame: 'How did the team finish?' }[phase]}</p></div></div><div className="metric-inputs">{event.metrics.filter(m => m.phase === phase).map(m => <div className="metric-input" key={m.id}><div><label htmlFor={'metric-' + m.id}>{m.name}</label><span>{m.kind === 'boolean' ? 'Completed successfully' : m.kind === 'rating' ? 'Rating from 0 to 5' : 'Successful actions observed'} · weight {m.weight}</span></div>{m.kind === 'boolean' ? <button id={'metric-' + m.id} type="button" className={'toggle-answer ' + (form.values[m.id] ? 'yes' : '')} aria-pressed={!!form.values[m.id]} onClick={() => value(m.id, form.values[m.id] ? 0 : 1, 1)}>{form.values[m.id] ? <><Check size={17}/>Yes</> : 'No'}</button> : <div className="stepper"><button type="button" aria-label={'Decrease ' + m.name} onClick={() => value(m.id, form.values[m.id] - 1, m.kind === 'rating' ? 5 : 10000)} disabled={!form.values[m.id]}><Minus size={17}/></button><input id={'metric-' + m.id} aria-label={m.name} type="number" min={0} max={m.kind === 'rating' ? 5 : 10000} value={form.values[m.id] ?? 0} onChange={e => value(m.id, Number(e.target.value), m.kind === 'rating' ? 5 : 10000)}/><button type="button" aria-label={'Increase ' + m.name} onClick={() => value(m.id, form.values[m.id] + 1, m.kind === 'rating' ? 5 : 10000)} disabled={form.values[m.id] >= (m.kind === 'rating' ? 5 : 10000)}><Plus size={17}/></button></div>}</div>)}</div></section>)}
+      <section className="panel"><PanelTitle title="The rest of the story" description="Numbers don’t catch everything."/><div className="stack"><label>Defense effectiveness <span className="hint">0 = not observed · 1 = limited · 5 = excellent</span><div className="rating-buttons">{[0, 1, 2, 3, 4, 5].map(n => <button type="button" key={n} aria-label={'Defense rating ' + n} aria-pressed={form.defense === n} className={form.defense === n ? 'selected' : ''} onClick={() => update({ defense: n })}>{n}</button>)}</div></label><label className="checkbox-label"><input type="checkbox" checked={form.disabled} onChange={e => update({ disabled: e.target.checked })}/><span>Robot was disabled or stopped functioning during the match</span></label><label>Match notes<textarea aria-label="Match notes" maxLength={2000} rows={3} value={form.notes} onChange={e => update({ notes: e.target.value })} placeholder="Intake consistency, missed cycles, defense, anything the numbers missed…"/></label></div></section></div>
+      <aside className="panel scout-summary"><span className="eyebrow">OBSERVATION SUMMARY</span><h2>Team {form.team}</h2><p>Qualification {form.match} · {form.alliance} alliance</p><div className="summary-total"><strong>{fmt(event.metrics.reduce((sum, m) => sum + (form.values[m.id] || 0) * m.weight, 0))}</strong><span>weighted scouting total</span></div><dl>{event.metrics.map(m => <div key={m.id}><dt>{m.name}</dt><dd>{m.kind === 'boolean' ? (form.values[m.id] ? 'Yes' : 'No') : form.values[m.id] || 0}</dd></div>)}</dl><p className="hint">An observation estimate using your event weights. This is not an official match score.</p>{error && <p role="alert" className="error">{error}</p>}<button className="button primary full" type="submit"><Save size={17}/>{editing ? 'Save changes' : 'Save observation'}</button><button className="button ghost full" type="button" onClick={() => setDiscard(true)}><RotateCcw size={15}/>{editing ? 'Cancel editing' : 'Clear draft'}</button></aside>
+    </form>}
+    <section className="panel match-log"><PanelTitle title="Observation log" description={rows.length + ' saved match observations'} action={<label className="search-field"><Search size={16}/><input aria-label="Search observations" value={query} onChange={e => { setQuery(e.target.value); setLimit(30); }} placeholder="Team, match, scout…"/></label>}/>{filtered.length ? <><div className="table-scroll"><table><thead><tr><th>Match</th><th>Team</th><th>Scout</th><th>Total</th><th>Status</th><th><span className="sr-only">Actions</span></th></tr></thead><tbody>{filtered.slice(0, limit).map(m => <tr key={m.id}><td><span className={'alliance-dot ' + m.alliance}/>Q{m.match}</td><td><strong>{m.team}</strong></td><td>{m.scout}</td><td>{fmt(event.metrics.reduce((s, metric) => s + (m.values[metric.id] || 0) * metric.weight, 0))}</td><td>{disputes.has(matchKey(m)) ? <Tag tone="amber">Needs review</Tag> : m.disabled ? <Tag tone="amber">Disabled</Tag> : <Tag tone="green">Recorded</Tag>}</td><td><div className="row-actions"><button className="icon-button" aria-label={'Edit team ' + m.team + ' match ' + m.match} onClick={() => edit(m)}><Pencil size={16}/></button><button className="icon-button" aria-label={'Delete team ' + m.team + ' match ' + m.match} onClick={() => setDeleting(m)}><Trash2 size={16}/></button></div></td></tr>)}</tbody></table></div>{limit < filtered.length && <button className="button secondary" onClick={() => setLimit(limit + 30)}>Show more observations</button>}</> : <Empty title={query ? 'No matching observations' : 'Your match log starts here'}>{query ? 'Try another team number, scout name, or match.' : 'Saved match observations will appear here, ready to review or edit.'}</Empty>}</section>
+    {deleting && <Confirm title="Delete this observation?" description={'Team ' + deleting.team + ' · Qualification ' + deleting.match + '. Export a backup first if you may need this observation later.'} onClose={() => setDeleting(null)} onConfirm={() => { setData({ ...workspace.data, matches: workspace.data.matches.filter(m => m.id !== deleting.id) }); if (editing === deleting.id) reset(); notify('Observation deleted.'); }}/>}
+    {discard && <Confirm title={editing ? 'Discard these edits?' : 'Clear this draft?'} description="Your saved observations will remain in the log. The current form will be reset." label="Discard draft" onClose={() => setDiscard(false)} onConfirm={reset}/>}
+  </>;
+}
+
+function PitForm({ event }: { event: ScoutEvent }) {
+  const { workspace, setData, setPreferences, notify } = useWorkspace();
+  const make = (team: number): Pit => ({ id: newId(), eventId: event.id, team, scout: workspace.preferences.scout, drivetrain: 'Unknown', weight: null, autoNotes: '', strengths: '', concerns: '', updatedAt: now() });
+  const latest = (team: number) => [...workspace.data.pits].filter(p => p.eventId === event.id && p.team === team).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
+  const [form, setForm] = useState<Pit>(() => structuredClone(latest(event.teams[0]?.number) || make(event.teams[0]?.number || 0)));
+  const [error, setError] = useState('');
+  if (!event.teams.length) return <section className="panel"><Empty title="Add teams to begin">Add a roster in Event settings, then come back to scout the pits.</Empty></section>;
+  function save(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.scout.trim()) { setError('Enter the scout’s name.'); return; }
+    const record = { ...form, scout: form.scout.trim(), updatedAt: now() };
+    setData({ ...workspace.data, pits: workspace.data.pits.some(p => p.id === record.id) ? workspace.data.pits.map(p => p.id === record.id ? record : p) : [...workspace.data.pits, record] });
+    setForm(record); setPreferences({ scout: record.scout }); notify('Pit notes saved for team ' + record.team + '.'); setError('');
+  }
+  return <form onSubmit={save} className="panel pit-form"><PanelTitle title="Meet the machine" description="Ask the crew. Look at the details. Capture what makes this robot tick."/><div className="stack"><div className="form-grid"><label>Team<select aria-label="Pit team" value={form.team} onChange={e => { const team = Number(e.target.value); setForm(structuredClone(latest(team) || make(team))); setError(''); }}>{event.teams.map(t => <option key={t.number} value={t.number}>{t.number} · {t.name || 'Team ' + t.number}</option>)}</select></label><label>Scout name<input required maxLength={100} value={form.scout} onChange={e => setForm({ ...form, scout: e.target.value })}/></label><label>Drivetrain<select aria-label="Drivetrain" value={form.drivetrain} onChange={e => setForm({ ...form, drivetrain: e.target.value as Pit['drivetrain'] })}>{['Unknown', 'Swerve', 'Tank', 'Mecanum', 'Other'].map(t => <option key={t}>{t}</option>)}</select></label><label>Robot weight (lb, optional)<input type="number" min={0} max={1000} step={0.1} value={form.weight ?? ''} onChange={e => setForm({ ...form, weight: e.target.value === '' ? null : Number(e.target.value) })}/></label></div><label>Autonomous capabilities<textarea aria-label="Autonomous capabilities" maxLength={2000} rows={3} value={form.autoNotes} onChange={e => setForm({ ...form, autoNotes: e.target.value })} placeholder="Starting positions, routes, consistency, dependencies…"/></label><div className="form-grid"><label>Strengths<textarea aria-label="Strengths" maxLength={2000} rows={4} value={form.strengths} onChange={e => setForm({ ...form, strengths: e.target.value })} placeholder="What does this robot do especially well?"/></label><label>Concerns or questions<textarea aria-label="Concerns or questions" maxLength={2000} rows={4} value={form.concerns} onChange={e => setForm({ ...form, concerns: e.target.value })} placeholder="What should the drive team know before a match?"/></label></div><p className="hint">This updates the latest pit note for this team. Imported notes remain in your backup. Pit form changes are saved when you press Save.</p>{error && <p role="alert" className="error">{error}</p>}<div className="form-actions"><button className="button primary" type="submit"><Save size={17}/>Save pit notes</button></div></div></form>;
+}
