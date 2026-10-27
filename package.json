@@ -1,0 +1,49 @@
+{
+  "name": "alliancelab",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "author": "Abhijay Panwar",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc -b && vite build && node scripts/generate-sw.mjs",
+    "preview": "vite preview --host 0.0.0.0",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "check": "npm run test && npm run build"
+  },
+  "dependencies": {
+    "@fontsource-variable/dm-sans": "^5.3.0",
+    "@fontsource-variable/manrope": "^5.3.0",
+    "jsqr": "^1.4.0",
+    "lucide-react": "^0.468.0",
+    "qrcode": "^1.5.4",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
+    "@playwright/test": "^1.56.0",
+    "@types/node": "^22.0.0",
+    "@types/qrcode": "^1.5.5",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "typescript": "~5.9.3",
+    "vite": "^7.1.0",
+    "vitest": "^5.0.5"
+  },
+  "engines": {
+    "node": ">=22.23.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/linux-cmd/alliancelab.git"
+  },
+  "bugs": {
+    "url": "https://github.com/linux-cmd/alliancelab/issues"
+  }
+}
