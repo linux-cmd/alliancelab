@@ -4,6 +4,8 @@
 <p align="center">An independent FRC scouting workspace by <a href="https://github.com/linux-cmd">Abhijay Panwar</a>.</p>
 <p align="center"><a href="../../actions/workflows/check-release.yml"><img src="https://github.com/linux-cmd/alliancelab/actions/workflows/check-release.yml/badge.svg" alt="Build and checks"></a> <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-466747" alt="MIT license"></a> <a href="../../releases"><img src="https://img.shields.io/badge/release-v1.0.0-d2e8a8" alt="Version 1.0.0"></a></p>
 
+**[Open AllianceLab](https://alliancelab.vercel.app)** · [Download v1.0.0](https://github.com/linux-cmd/alliancelab/releases/tag/v1.0.0)
+
 AllianceLab helps scouts capture match and pit observations, compare teams, and prepare an alliance pick list. It runs in your browser, keeps data on your device, and works offline after its first successful load.
 
 ![AllianceLab overview showing the fictional practice event](docs/overview.jpg)
