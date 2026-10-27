@@ -71,7 +71,11 @@ function workerVersion(worker: ServiceWorker): Promise<string | null> {
     const timer = setTimeout(() => finish(null), 1500);
     channel.port1.onmessage = (message) =>
       finish(typeof message.data?.version === 'string' ? message.data.version : null);
-    try { worker.postMessage({ type: 'GET_VERSION' }, [channel.port2]); } catch { finish(null); }
+    try {
+      worker.postMessage({ type: 'GET_VERSION' }, [channel.port2]);
+    } catch {
+      finish(null);
+    }
   });
 }
 

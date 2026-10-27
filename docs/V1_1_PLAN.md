@@ -16,3 +16,7 @@ Make the daily scouting workflow easier to understand and protect observations w
 ## Verification and release
 
 Run unit tests, TypeScript/build, dependency audit, formatting checks, and production browser flows on desktop and mobile. Check real production navigation, error output, offline reload, migrated data, QR images, and schedules. Physical phone-camera testing requires hardware and remains documented separately from browser emulation. Record actual results in `docs/VERIFICATION.md` before the stable release.
+
+## Progress
+
+Implementation is complete for safe mutations, drafts, IndexedDB migration/recovery, schedule entry, aggregation, the simplified interface, formatting, dependency updates, and generic release automation. Local gates pass; release verification and the final published commit are recorded in `docs/VERIFICATION.md` and the GitHub release.

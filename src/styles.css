@@ -135,7 +135,7 @@ select,
 textarea {
   min-width: 0;
 }
-input:not([type='checkbox']):not([type='radio']):not([type='range']),
+:where(input:not([type='checkbox']):not([type='radio']):not([type='range'])),
 select,
 textarea {
   width: 100%;

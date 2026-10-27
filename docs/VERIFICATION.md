@@ -1,15 +1,22 @@
-# v1.0.0 verification
+# v1.1.0 verification
 
-Verified on 2026-10-26 (America/Chicago).
+Local checks completed on 2026-10-26 (America/Chicago), using Node 24 and the production build.
 
-- Production TypeScript and Vite build completed successfully.
-- 19 Vitest tests passed across data boundaries, import merges, distinct-match calculations, CSV handling and QR framing.
-- 24 Playwright tests passed across desktop Chromium and an emulated iPhone viewport, with no retries or skipped tests.
-- Every main screen passed the included WCAG A/AA axe checks and viewport checks.
-- Browser flows covered creating an event, scouting and editing, draft persistence, offline reloads including lazy screens, reviewed backups, repeated/malformed imports, QR text and generated-image scanning, pit notes, planner persistence, event deletion, corruption recovery and concurrent tabs.
-- npm audit reported no known vulnerabilities in the locked dependency tree at the time of the check.
-- https://alliancelab.vercel.app returned HTTP 200 with the configured security headers. The deployed app generated transfer QR frames and reloaded its transfer screen offline successfully.
+- Formatting, TypeScript, Vite build, and offline-shell generation passed.
+- 30 unit tests passed, including v1 migration, IndexedDB transactions and rollback, stale writers, previous snapshots, schedule parsing, duplicate/conflicting observations, QR transport, and a 500-team / 50,000-observation analytics fixture.
+- 40 browser cases passed across desktop Chromium and an emulated iPhone viewport, with no retries or skipped cases.
+- Main screens and expanded scouting, planning, and dialog controls passed the included WCAG A/AA axe checks and viewport checks.
+- Scouting checks covered match entry/editing, pit drafts across team changes, immediate navigation, offline reload, reviewed schedules, station queues, version 1 migration, workspace-draft restore, failed browser writes, and paused saves that preserve forms.
+- Transfer checks covered repeated and malformed JSON, multipart QR text, generated QR image decoding, CSV export, and reviewed replacement.
+- Desktop and phone screenshots were visually inspected; the save action no longer covers fields, optional panels remain closed initially, and secondary text has adequate automated contrast.
+- `npm audit --audit-level=high` reported zero known vulnerabilities in the locked tree at verification time.
 
-The included GitHub workflow repeats the unit, production-build, dependency and browser checks before packaging the stable release.
+The GitHub `check` job repeats the formatting, unit, build, dependency, and full browser gates. Every browser case also fails on an uncaught application exception. Stable tags must agree with `package.json` before release assets are published.
 
-Physical camera permission behavior and scanning on an actual phone were not verified in this environment. Emulation is not a substitute for physical device testing. QR image import and text/file fallbacks were verified. No live competition observations were used; the bundled demo remains fictional.
+## Deployment and upgrade check
+
+The release procedure preserves a browser profile running v1 with 30 fictional observations and its installed worker, then verifies the new public deployment, app update, automatic migration, and an offline reload. Deployment results are recorded here before the stable tag is published.
+
+## Device limits
+
+Physical camera permissions, autofocus, lighting, and scanning on real phones were not exercised in this environment. Emulation does not establish physical device behavior. QR image/text/file fallbacks were verified. No real competition or student records were used.

@@ -7,7 +7,7 @@ Backups use the following envelope:
 ```json
 {
   "format": "alliancelab",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "kind": "workspace",
   "exportedAt": "2026-10-26T12:00:00.000Z",
   "data": { "events": [], "matches": [], "pits": [] }
@@ -16,7 +16,17 @@ Backups use the following envelope:
 
 `kind` is either `workspace` or `event`. Only a workspace backup can replace the full workspace; both can be merged.
 
+Version 1 backups migrate to version 2 by adding empty schedules. Existing observation IDs, timestamps, and values remain unchanged. Unknown future versions are rejected. Imports are bounded to 50 MB of UTF-8 JSON.
+
+Workspace backups may include `localDrafts`, a map of local match, pit, edit, and planner state. Replace restores these drafts; merging leaves the receiving device's drafts alone. Event exports omit local drafts. The relevant screen validates each restored draft before using it.
+
 Event IDs, metric IDs and observation IDs must remain stable. Two separately created events named “Regional” are still different events.
+
+## Qualification schedule
+
+An event has a `schedule` array, with up to 6,000 assignments. Each assignment contains a qualification `match`, roster `team`, `alliance` (`red` or `blue`), and `station` (1–3). A team and station may each appear at most once per match. Partial schedules are allowed.
+
+CSV import accepts exactly the headers `match,team,alliance,station`, in any order, with optional quoted scalar values. It checks every roster reference and previews the schedule before replacing it. Merging an event can add compatible assignments; conflicting assignments cancel the merge. The next-assignment queue skips observations already saved under the current scout name.
 
 ## Event metrics
 
