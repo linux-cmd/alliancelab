@@ -60,6 +60,20 @@ async function downloadRecovery() {
     /* Recovery may be unavailable if the browser blocks all storage. */
   }
 }
+function workerVersion(worker: ServiceWorker): Promise<string | null> {
+  return new Promise((resolve) => {
+    const channel = new MessageChannel();
+    const finish = (value: string | null) => {
+      clearTimeout(timer);
+      channel.port1.close();
+      resolve(value);
+    };
+    const timer = setTimeout(() => finish(null), 1500);
+    channel.port1.onmessage = (message) =>
+      finish(typeof message.data?.version === 'string' ? message.data.version : null);
+    try { worker.postMessage({ type: 'GET_VERSION' }, [channel.port2]); } catch { finish(null); }
+  });
+}
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: boolean }> {
   state = { error: false };
@@ -111,6 +125,10 @@ function WorkspaceApp({ initial }: { initial: LoadedWorkspace }) {
   const [readOnly, setReadOnly] = useState(!!initial.error);
   const [storageError, setStorageError] = useState(initial.error || '');
   const [externalChange, setExternalChange] = useState(false);
+  const [checkingShell, setCheckingShell] = useState(
+    () => import.meta.env.PROD && !!navigator.serviceWorker?.controller,
+  );
+  const [requiresUpdate, setRequiresUpdate] = useState(false);
   const [saving, setSaving] = useState(false);
   const [recovery, setRecovery] = useState(false);
   const [page, setPage] = useState(initialPage);
@@ -124,7 +142,7 @@ function WorkspaceApp({ initial }: { initial: LoadedWorkspace }) {
   const revision = useRef(initial.revision);
   const source = useRef(crypto.randomUUID());
   const paused = useRef(readOnly || externalChange);
-  paused.current = readOnly || externalChange;
+  paused.current = readOnly || externalChange || checkingShell || requiresUpdate;
   const queue = useRef(Promise.resolve());
   const pendingWrites = useRef(0);
   const lastQueued = useRef<Workspace | null>(initial.migrated ? null : initial.workspace);
@@ -235,10 +253,17 @@ function WorkspaceApp({ initial }: { initial: LoadedWorkspace }) {
       });
   }, []);
   useEffect(() => {
-    if (readOnly || externalChange || lastQueued.current === workspace) return;
+    if (
+      readOnly ||
+      externalChange ||
+      checkingShell ||
+      requiresUpdate ||
+      lastQueued.current === workspace
+    )
+      return;
     lastQueued.current = workspace;
     persist(workspace);
-  }, [workspace, readOnly, externalChange, persist]);
+  }, [workspace, readOnly, externalChange, checkingShell, requiresUpdate, persist]);
 
   useEffect(() => {
     const changed = () => {
@@ -298,12 +323,25 @@ function WorkspaceApp({ initial }: { initial: LoadedWorkspace }) {
               setUpdateAvailable(true);
           });
         });
-        void navigator.serviceWorker.ready.then(() => {
-          if (!disposed) setOfflineReady(true);
+        void navigator.serviceWorker.ready.then(async (ready) => {
+          const active = navigator.serviceWorker.controller || ready.active;
+          const matches = active && (await workerVersion(active)) === version;
+          if (!disposed) {
+            setOfflineReady(!!matches);
+            setRequiresUpdate(!matches);
+            setCheckingShell(false);
+          }
         });
       })
-      .catch(() => {
-        if (!disposed) notify('Offline caching is unavailable. Keep a downloaded backup.');
+      .catch(async () => {
+        const controller = navigator.serviceWorker.controller;
+        const matches = controller && (await workerVersion(controller)) === version;
+        if (!disposed) {
+          setCheckingShell(false);
+          setRequiresUpdate(!!controller && !matches);
+          setOfflineReady(!!matches);
+          notify('Offline caching is unavailable. Keep a downloaded backup.');
+        }
       });
     return () => {
       disposed = true;
@@ -389,7 +427,7 @@ function WorkspaceApp({ initial }: { initial: LoadedWorkspace }) {
       )}
       <aside
         ref={sidebar}
-        inert={compact && !mobileMenu}
+        inert={(compact && !mobileMenu) || checkingShell || requiresUpdate}
         className={'sidebar ' + (mobileMenu ? 'open' : '')}
         aria-label="Main navigation"
       >
@@ -537,7 +575,11 @@ function WorkspaceApp({ initial }: { initial: LoadedWorkspace }) {
           {updateAvailable && (
             <div className="notice">
               <RefreshCw size={18} />
-              <span>A new app version is ready.</span>
+              <span>
+                {requiresUpdate
+                  ? 'Finish installing this version before scouting.'
+                  : 'A new app version is ready.'}
+              </span>
               <button
                 className="text-button"
                 disabled={saving || !!storageError}
@@ -547,44 +589,56 @@ function WorkspaceApp({ initial }: { initial: LoadedWorkspace }) {
               </button>
             </div>
           )}
+          {(checkingShell || requiresUpdate) && !updateAvailable && (
+            <div className="notice">
+              <RefreshCw size={18} />
+              <span>
+                {checkingShell
+                  ? 'Checking offline access…'
+                  : 'Preparing the app update. Connect to the internet to finish installation.'}
+              </span>
+            </div>
+          )}
           {event?.demo && (
             <div className="demo-banner">
               <span>Demo event · fictional observations</span>
               <button onClick={() => setCreate(true)}>Create your event</button>
             </div>
           )}
-          <Suspense fallback={<div className="loading">Opening…</div>}>
-            {page === 'overview' && (
-              <Overview
-                event={event}
-                navigate={navigate}
-                createEvent={() => setCreate(true)}
-                exploreDemo={exploreDemo}
-              />
-            )}
-            {needsEvent && (
-              <section className="onboarding">
-                <IconMark />
-                <h1>Create your first event</h1>
-                <p>Add a roster, then start scouting.</p>
-                <div className="button-row">
-                  <button className="button primary" onClick={() => setCreate(true)}>
-                    Create event
-                  </button>
-                  <button className="button secondary" onClick={exploreDemo}>
-                    Explore the demo
-                  </button>
-                </div>
-              </section>
-            )}
-            {event && page === 'scout' && <Scout key={event.id} event={event} />}
-            {event && page === 'teams' && (
-              <Teams key={event.id} event={event} navigate={navigate} />
-            )}
-            {event && page === 'planner' && <Planner key={event.id} event={event} />}
-            {page === 'transfer' && <Transfer key={event?.id || 'none'} event={event} />}
-            {page === 'settings' && <Settings createEvent={() => setCreate(true)} />}
-          </Suspense>
+          <div inert={checkingShell || requiresUpdate}>
+            <Suspense fallback={<div className="loading">Opening…</div>}>
+              {page === 'overview' && (
+                <Overview
+                  event={event}
+                  navigate={navigate}
+                  createEvent={() => setCreate(true)}
+                  exploreDemo={exploreDemo}
+                />
+              )}
+              {needsEvent && (
+                <section className="onboarding">
+                  <IconMark />
+                  <h1>Create your first event</h1>
+                  <p>Add a roster, then start scouting.</p>
+                  <div className="button-row">
+                    <button className="button primary" onClick={() => setCreate(true)}>
+                      Create event
+                    </button>
+                    <button className="button secondary" onClick={exploreDemo}>
+                      Explore the demo
+                    </button>
+                  </div>
+                </section>
+              )}
+              {event && page === 'scout' && <Scout key={event.id} event={event} />}
+              {event && page === 'teams' && (
+                <Teams key={event.id} event={event} navigate={navigate} />
+              )}
+              {event && page === 'planner' && <Planner key={event.id} event={event} />}
+              {page === 'transfer' && <Transfer key={event?.id || 'none'} event={event} />}
+              {page === 'settings' && <Settings createEvent={() => setCreate(true)} />}
+            </Suspense>
+          </div>
           <footer className="footer">
             <span>AllianceLab</span>
             <span>By Abhijay Panwar</span>
