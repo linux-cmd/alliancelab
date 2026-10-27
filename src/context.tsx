@@ -3,9 +3,9 @@ import type { Data, Preferences, Workspace } from './domain';
 
 export type WorkspaceContextValue = {
   workspace: Workspace;
-  setData: (next: Data) => void;
+  setData: (next: Data, drafts?: Workspace['drafts']) => boolean;
   setPreferences: (next: Partial<Preferences>) => void;
-  setDraft: (key: string, value: unknown) => void;
+  setDraft: (key: string, value: unknown) => boolean;
   clearDraft: (key: string) => void;
   notify: (message: string) => void;
 };

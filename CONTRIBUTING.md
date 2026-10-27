@@ -6,16 +6,16 @@ Open an issue with the user problem, expected behavior and a small reproduction 
 
 ## Setup
 
-Use Node 22.23+ or 24. Run `npm ci`, `npm run dev`, and `npm run check`. Install Chromium with `npx playwright install --with-deps chromium`, then run `npm run test:e2e` against a production preview. In CI the Playwright configuration starts its own preview server.
+Use Node 22.23+ or 24. Run `npm ci`, `npm run dev`, and `npm run check`. Install Chromium with `npx playwright install --only-shell chromium`, then run `npm run test:e2e`. Playwright starts a production preview automatically when one is not already running.
 
-For a local full browser run, build and start the preview on port 5173 in a separate terminal:
+For a local full browser run:
 
 ```sh
 npm run build
-npm run preview -- --port 5173
+npm run test:e2e
 ```
 
-Then run `npm run test:e2e`.
+Use `npm run format` before committing. Set `BASE_URL` to exercise an existing deployment. Keep exports, real scouting records, and browser profiles out of commits.
 
 ## Changes
 

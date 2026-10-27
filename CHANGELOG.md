@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.1.0 — 2026-10-26
+
+- Simplified navigation to Home, Scout, Teams, and Plan, with secondary tools under Manage.
+- Cleaner typography, quieter cards, larger controls, and optional notes, logs, priorities, and comparisons.
+- Reviewed schedule CSV import, station assignments, and automatic next-match entry.
+- Persistent pit and editing drafts; failed saves preserve forms and cannot report success.
+- Transactional IndexedDB storage with revision checks, v1 migration, and a previous saved snapshot.
+- Portable schema v2 with schedules and optional workspace drafts; v1 backups remain supported.
+- One-pass event aggregation and reused team summaries, including a 50,000-observation fixture.
+- Consistent offline app versions, recovery-envelope import, and backup reminders.
+- Version-tag release automation, formatting checks, pinned Actions, and weekly dependency updates.
+
 ## 1.0.0 — 2026-10-26
 
 First stable release.

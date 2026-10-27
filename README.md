@@ -1,32 +1,65 @@
-<p align="center"><img src="public/icon.svg" width="64" alt="AllianceLab logo"></p>
+<p align="center"><img src="public/icon.svg" width="56" alt="AllianceLab logo"></p>
 <h1 align="center">AllianceLab</h1>
 <p align="center"><strong>Offline scouting. Clearer alliance decisions.</strong></p>
-<p align="center">An independent FRC scouting workspace by <a href="https://github.com/linux-cmd">Abhijay Panwar</a>.</p>
-<p align="center"><a href="../../actions/workflows/check-release.yml"><img src="https://github.com/linux-cmd/alliancelab/actions/workflows/check-release.yml/badge.svg" alt="Build and checks"></a> <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-466747" alt="MIT license"></a> <a href="../../releases"><img src="https://img.shields.io/badge/release-v1.0.0-d2e8a8" alt="Version 1.0.0"></a></p>
+<p align="center">Created and maintained by <a href="https://github.com/linux-cmd">Abhijay Panwar</a>.</p>
+<p align="center"><a href="../../actions/workflows/check-release.yml"><img src="https://github.com/linux-cmd/alliancelab/actions/workflows/check-release.yml/badge.svg" alt="Build and checks"></a> <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-466747" alt="MIT license"></a> <a href="../../releases/tag/v1.1.0"><img src="https://img.shields.io/badge/release-v1.1.0-466747" alt="Version 1.1.0"></a></p>
 
-**[Open AllianceLab](https://alliancelab.vercel.app)** · [Download v1.0.0](https://github.com/linux-cmd/alliancelab/releases/tag/v1.0.0)
+**[Open the app](https://alliancelab.vercel.app)** · [Download v1.1.0](https://github.com/linux-cmd/alliancelab/releases/tag/v1.1.0)
 
-AllianceLab helps scouts capture match and pit observations, compare teams, and prepare an alliance pick list. It runs in your browser, keeps data on your device, and works offline after its first successful load.
+AllianceLab is an independent FRC scouting workspace that keeps working without venue Wi-Fi. Scouts record observations, compare the evidence, and prepare a pick list. No account, API key, or database server is needed.
 
-![AllianceLab overview showing the fictional practice event](docs/overview.jpg)
+![AllianceLab 1.1 event overview with fictional observations](docs/overview.jpg)
 
-<details><summary>See the phone layout</summary><p><img src="docs/mobile.jpg" width="320" alt="AllianceLab phone overview"></p></details>
+<details><summary>Phone layout</summary><p><img src="docs/mobile.jpg" width="320" alt="AllianceLab on a phone"></p></details>
 
-## What you can do
+## A simpler workspace
 
-- **Set up your own season.** Create an event, paste a team roster, and define count, yes/no, or rating metrics across auto, teleop, and endgame.
-- **Scout from the stands.** Use touch-friendly counters, persistent match drafts, scout names, alliance colors, defense ratings, and notes.
-- **Keep a pit notebook.** Record drivetrain, weight, autonomous capabilities, strengths, and questions for the drive team.
-- **Compare the evidence.** Inspect team averages, match variation, reliability, sample sizes, pit notes, and match-by-match performance.
-- **Build a working alliance.** Adjust priorities, try two three-team combinations, and mark teams unavailable.
-- **Share without a server.** Export JSON backups, import with a preview, transfer observations through multipart QR codes, scan QR images, or export match CSV.
-- **Stay usable offline.** The production build caches every screen, bundled font, and required asset. No external font service, API key, login, or database is required.
+- **Home** — event coverage, team averages, and your next scheduled assignment.
+- **Scout** — match counters and pit notes, with drafts kept separately for each team and saved-record edit.
+- **Teams** — sample sizes, consistency, reliability, notes, and comparisons for up to four teams.
+- **Plan** — an alliance builder and working pick list. Open priorities or a second alliance when needed.
 
-The demo event is separate and clearly labeled. It uses real team names with **entirely fictional observations**.
+**Manage** contains event setup, match schedules, backups, CSV exports, and QR sharing. Optional controls stay collapsed until needed. The demo is clearly labeled and uses entirely fictional observations.
 
-## Quick start
+## Start scouting
 
-Use Node.js **22.23+** or Node.js 24 and npm.
+1. Create an event and paste a roster, one team per line: `6901, Knights Robotics`.
+2. Review the practice metrics or customize them for your season. Definitions are fixed after the first saved match.
+3. Share one event setup with your crew before they start, so every device uses the same IDs.
+4. Record matches and pit visits. Review conflicts before making a pick.
+5. Download a workspace backup after each session.
+
+For scheduled scouting, open **Manage → Event settings → Match schedule** and import a CSV:
+
+```csv
+match,team,alliance,station
+1,6901,red,1
+1,254,blue,1
+2,254,red,1
+2,6901,blue,1
+```
+
+All scheduled teams must be on the roster. Red and blue have stations 1–3; partial schedules are accepted. Imports are validated and reviewed before replacing the schedule. Choose your station on **Scout** to fill in the next assignment; saving advances to the next scheduled team.
+
+## Data you control
+
+The workspace is saved transactionally in the browser’s IndexedDB. Match, pit, and editing drafts survive navigation. A previous saved data snapshot is retained when observations or event settings change, and another tab cannot silently overwrite a newer revision.
+
+Existing v1 browser data migrates automatically. Its original localStorage copy is retained separately and is not updated by v1.1. Both v1 and v2 JSON backups are accepted. New workspace backups include local drafts and planner selections; **Replace workspace** restores them. Merge imports preserve local drafts, and event-only exports omit them.
+
+Keep a backup outside the browser: clearing site data removes both the workspace and its recovery snapshot. The app has no telemetry or scouting backend. Camera frames stay on the device. Browser data and exports are not encrypted and can contain scout names and notes.
+
+## How estimates work
+
+Scouting totals use your event’s metric weights. Averages and standard deviations use distinct, undisputed team–match pairs. Conflicting observations are flagged and excluded until reviewed; matching observers do not inflate the sample count.
+
+Pick scores normalize observed metrics and apply your chosen priorities. Combined alliance totals add individual averages. These estimates do not model game rules, interactions, or win probability. Defense rating 0 means “not observed” and currently contributes zero to the average.
+
+See the [data and scoring guide](docs/DATA_MODEL.md).
+
+## Run locally
+
+Use Node.js **22.23+ or 24**:
 
 ```sh
 git clone https://github.com/linux-cmd/alliancelab.git
@@ -35,71 +68,35 @@ npm ci
 npm run dev
 ```
 
-Open the address printed by Vite. Choose **Explore the demo** to look around, or **Create event** to start with your own roster.
-
-For the production app and offline installation:
+For an offline-capable production preview:
 
 ```sh
 npm run build
 npm run preview
 ```
 
-The service worker is generated during the production build. Offline caching is intentionally disabled in the development server. Serve `dist/` from HTTPS, or use localhost for development. Opening `index.html` directly from disk is unsupported.
-
-## First event, in five minutes
-
-1. Create an event and paste one team per line: `6901, Knights Robotics`.
-2. Choose your metrics and value weights. The defaults are practice examples, not any season’s official scoring rules.
-3. Set your scout name in Event settings, then save match and pit observations.
-4. Open Teams & insights to compare up to four teams. Review small samples and conflicting observations.
-5. Use Alliance lab to adjust pick-list priorities. Export a JSON backup at the end of each scouting session.
-
-Share the event setup with the crew before scouting. JSON or QR transfers preserve the event and observation IDs used to merge data correctly.
-
-## How the numbers work
-
-A match’s **weighted scouting total** is the sum of its observed metrics multiplied by the event’s value weights. The average and standard deviation use distinct, undisputed team–match pairs. These totals are estimates for comparison, **not official scores**.
-
-If multiple scouts observe the same team in the same match, they do not inflate the match count. Matching observations count once. Conflicting values, disable statuses, or defense ratings flag that pair for review and exclude it from estimates. Edit or delete the incorrect record in the observation log to resolve it.
-
-The **pick score** normalizes each team’s metric average against the best observed average in the event, applies your priorities, and scales the weighted result to 100. Reliability and defense can also contribute. It is a relative ranking, not a win probability. Combined alliance totals add individual averages; they do not simulate congestion, autonomous collisions, or game rules.
-
-Read the full [data and scoring guide](docs/DATA_MODEL.md).
-
-## Data, backups, and privacy
-
-All scouting data stays in this browser’s localStorage. The app does not operate a scouting backend or collect analytics. Camera frames are processed on the device.
-
-Browser storage can be cleared or run out of space. Keep a JSON backup outside the browser. Backups contain saved event definitions and observations; match drafts, preferences, and planner selections stay on the originating device. Data is not encrypted. Anyone with access to your browser profile or backup can read scout names and notes.
-
-Opening the workspace in another tab pauses saving in the original tab to prevent silent overwrites. Download any unsaved work before reloading the latest copy. JSON imports are validated and previewed; repeated record IDs are skipped or updated only when the incoming revision is newer.
-
-More: [Privacy](PRIVACY.md) · [Security](SECURITY.md) · [Deployment](docs/DEPLOYMENT.md)
+Serve the built `dist/` directory at the root of an HTTPS origin, or use localhost. Opening files directly from disk and subdirectory hosting are unsupported. Wait for **Available offline**, then disconnect and verify a reload before your event.
 
 ## Development checks
 
 ```sh
 npm run check
-npx playwright install --with-deps chromium
+npx playwright install --only-shell chromium
 npm run test:e2e
 ```
 
-The browser suite exercises desktop and phone layouts, scouting and editing, offline reloads, lazy screens, backup imports, QR frame reconstruction and image scanning, pit notes, planner persistence, accessibility checks, recovery, and concurrent tabs.
+`check` runs formatting, unit tests, TypeScript, and the production build. Playwright starts a preview server automatically and checks desktop and phone workflows. Set `BASE_URL` to check an existing deployment. Use `npm run format` before committing.
 
-See [architecture](docs/ARCHITECTURE.md), [contributing](CONTRIBUTING.md), and the [changelog](CHANGELOG.md).
+The release workflow checks a version tag against `package.json`, runs the same gates, and publishes a static web ZIP and SHA-256 checksum. Dependency update PRs are scheduled weekly.
 
-## v1 boundaries
+## Current boundaries
 
-- No live FIRST event API, accounts, cloud synchronization, Bluetooth transfer, or automated scouting.
-- Qualification match numbers are supported. Use a separate event for other match formats.
-- Metric definitions are fixed once an event has match observations. Create a new event to change the schema.
-- Events with the same name but different IDs remain separate; distribute one event setup to scouts before collecting data.
-- Defense rating 0 means “not observed” and contributes zero to the current average. Review notes before drawing a conclusion from that value.
-- QR checksums detect damage, not the sender’s identity. A file transfer is more practical for large datasets.
-- Local storage capacity varies by browser. The schema bounds imports to 100 events, 500 teams per event, 50,000 match observations, and 10,000 pit observations; device storage may be exhausted earlier.
+- Local workspaces and reviewed file/QR transfers; no accounts, cloud synchronization, or live FIRST API.
+- Qualification matches; other formats need a separate event.
+- Up to 100 events, 500 teams per event, 6,000 schedule assignments per event, 50,000 match observations, and 10,000 pit notes. Backups are limited to 50 MB; browser capacity can be lower.
+- QR frames are best for small transfers. Their checksum detects damage and does not authenticate the sender.
+- Camera permissions, installation prompts, and scanning on physical phones require device testing. Image decoding, offline workflows, and emulated phone layouts are covered by automated checks.
 
-## License and attribution
+[Architecture](docs/ARCHITECTURE.md) · [Verification](docs/VERIFICATION.md) · [Deployment](docs/DEPLOYMENT.md) · [Contributing](CONTRIBUTING.md) · [Privacy](PRIVACY.md) · [Security](SECURITY.md) · [Changelog](CHANGELOG.md)
 
-MIT © 2026 **Abhijay Panwar**. Bundled DM Sans and Manrope fonts use the SIL Open Font License; see [third-party notices](THIRD_PARTY_NOTICES.md).
-
-AllianceLab is an independent community project. It is not affiliated with or endorsed by FIRST. FIRST and FRC are trademarks of FIRST.
+MIT © 2026 **Abhijay Panwar**. See [third-party notices](THIRD_PARTY_NOTICES.md) for bundled libraries and fonts. AllianceLab is not affiliated with or endorsed by FIRST. FIRST and FRC are trademarks of FIRST.
