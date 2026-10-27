@@ -1,26 +1,229 @@
-import { ArrowRight, ArrowUpRight, ClipboardList, Users, CheckCircle2, AlertTriangle, Radio, CalendarDays, MapPin, Plus } from 'lucide-react';
-import { PageHeading, Stat, PanelTitle, Tag, Empty, fmt } from '../components/ui';
+import { ArrowRight, ClipboardList, Plus, Download, AlertTriangle } from 'lucide-react';
+import { PageHeading, Stat, PanelTitle, Tag, fmt } from '../components/ui';
 import { useWorkspace } from '../context';
-import { conflicts } from '../domain';
+import { bundle, now } from '../domain';
 import type { ScoutEvent } from '../domain';
-import { teamStats } from '../analytics';
+import { useEventStats } from '../useEventStats';
+import { download } from '../storage';
+import { nextAssignment } from '../schedule';
 
-export default function Overview({ event, navigate, createEvent }: { event?: ScoutEvent; navigate: (page: string) => void; createEvent: () => void }) {
-  const { workspace } = useWorkspace();
-  const matches = workspace.data.matches.filter(m => m.eventId === event?.id);
-  const pits = workspace.data.pits.filter(p => p.eventId === event?.id);
-  const issues = conflicts(matches);
-  const covered = new Set(matches.map(m => m.team));
-  const observedMatches = new Set(matches.map(m => m.team + ':' + m.match)).size;
-  const stats = event?.teams.map(t => ({ ...t, stats: teamStats(event, matches, t.number) })).filter(t => t.stats.matches).sort((a, b) => b.stats.average - a.stats.average) || [];
-  const recent = [...matches].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 5);
-  const coverage = event?.teams.length ? Math.round(covered.size / event.teams.length * 100) : 0;
-  return <>
-    <PageHeading eyebrow="YOUR EVENT, IN FOCUS" title="A clearer view of the field." description="Collect the details. Connect the dots. Make the next pick count." action={<button className="button primary" onClick={() => event ? navigate('scout') : createEvent()}><Plus size={17}/>{event ? 'Scout a match' : 'Create event'}</button>}/>
-    <section className="hero-strip"><div className="hero-copy"><span className="hero-kicker"><span className="live-dot"/>{event ? 'EVENT WORKSPACE' : 'READY WHEN YOU ARE'}</span><h2>{event?.name || 'Good decisions start with good scouting.'}</h2><div className="hero-details">{event ? <><span><CalendarDays size={14}/>{new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(new Date(event.date + 'T12:00:00Z'))}</span><span><MapPin size={14}/>{event.location || 'Location not set'}</span></> : <p>One shared picture of your team, your partners, and the competition.</p>}</div><button className="hero-link" onClick={() => event ? navigate('teams') : createEvent()}>{event ? 'Explore the teams' : 'Set up your first event'}<ArrowUpRight size={16}/></button></div><div className="field-art" aria-hidden="true"><div className="field-lines"/><span className="robot r1">6901</span><span className="robot r2">254</span><span className="robot r3">118</span><span className="field-center">A</span><span className="field-caption">A LITTLE MORE SIGNAL.<br/>A LOT MORE CLARITY.</span></div></section>
-    <div className="stats-grid"><Stat label="Teams on the radar" value={event?.teams.length || '—'} detail={covered.size + ' teams with match observations'} icon={<Users size={17}/>}/><Stat label="Match observations" value={matches.length} detail={observedMatches + ' unique team–match pairs'} icon={<ClipboardList size={17}/>}/><Stat label="Pit coverage" value={event?.teams.length ? Math.round(new Set(pits.map(p => p.team)).size / event.teams.length * 100) + '%' : '—'} detail={new Set(pits.map(p => p.team)).size + ' teams visited'} icon={<CheckCircle2 size={17}/>}/><Stat label="Needs a closer look" value={issues.size} detail="Conflicting team–match observations" icon={<AlertTriangle size={17}/>}/></div>
-    <div className="dashboard-grid"><section className="panel"><PanelTitle title="The field, at a glance" description="Teams by average weighted scouting total" action={<button className="text-button" onClick={() => navigate('teams')}>All teams<ArrowUpRight size={15}/></button>}/>{stats.length ? <div className="leaderboard">{stats.slice(0, 5).map((team, index) => <button className="leader-row" key={team.number} onClick={() => navigate('teams')}><span className="rank">{String(index + 1).padStart(2, '0')}</span><span className="leader-team"><strong>{team.number}</strong><span>{team.name || 'Team ' + team.number}</span></span><span className="leader-bar"><i style={{ width: Math.max(2, team.stats.average / Math.max(1, stats[0].stats.average) * 100) + '%' }}/></span><span className="leader-score">{fmt(team.stats.average)}<small>{team.stats.matches} matches</small></span></button>)}</div> : <Empty title="Your field is taking shape" action={<button className="button secondary" onClick={() => event ? navigate('scout') : createEvent()}>{event ? 'Record a match' : 'Create an event'}<ArrowRight size={15}/></button>}>Record a few observations to see which teams are finding their rhythm.</Empty>}<div className="panel-foot"><span className="tiny-dot"/>Conflicting observations are excluded. Totals use your event’s metric weights.</div></section>
-    <section className="panel coverage-panel"><PanelTitle title="Every observation helps" description="Build a picture you can trust."/><div className="coverage-ring" style={{ '--coverage': coverage + '%' } as React.CSSProperties}><div><strong>{coverage}%</strong><span>match coverage</span></div></div><div className="coverage-legend"><span><i/>{covered.size} scouted</span><span><i/>{Math.max(0, (event?.teams.length || 0) - covered.size)} to discover</span></div><button className="button secondary full" onClick={() => event ? navigate('scout') : createEvent()}>Keep the observations coming<ArrowRight size={15}/></button></section></div>
-    <div className="dashboard-grid bottom-grid"><section className="panel"><PanelTitle title="Fresh from the stands" description="Your latest saved match observations" action={<button className="text-button" onClick={() => navigate('scout')}>View log<ArrowUpRight size={15}/></button>}/>{recent.length ? <div className="recent-list">{recent.map(m => <div className="recent-row" key={m.id}><span className={'match-avatar ' + m.alliance}>Q{m.match}</span><div><strong>Team {m.team}<span className="muted"> · {m.scout}</span></strong><span>{m.notes || 'Match observation saved'}</span></div>{m.disabled ? <Tag tone="amber">Disabled</Tag> : <Tag tone="green">Saved locally</Tag>}</div>)}</div> : <div className="quiet-empty">No observations yet. Your next match starts the story.</div>}</section><section className="tip-card"><span className="tip-icon"><Radio size={21}/></span><span className="eyebrow">BUILT FOR THE BLEACHERS</span><h2>Venue Wi-Fi?<br/>You’re covered.</h2><p>Keep scouting offline. Bring your crew’s observations together with a backup file or QR transfer.</p><button className="text-button" onClick={() => navigate('transfer')}>Open transfer center<ArrowUpRight size={16}/></button></section></div>
-  </>;
+export default function Overview({
+  event,
+  navigate,
+  createEvent,
+  exploreDemo,
+}: {
+  event?: ScoutEvent;
+  navigate: (page: string) => void;
+  createEvent: () => void;
+  exploreDemo: () => void;
+}) {
+  if (!event)
+    return (
+      <section className="onboarding">
+        <span className="welcome-label">OFFLINE ROBOTICS SCOUTING</span>
+        <h1>A clear view of your next event.</h1>
+        <p>Record what you see. Compare teams. Build your pick list.</p>
+        <div className="button-row">
+          <button className="button primary" onClick={createEvent}>
+            <Plus size={18} />
+            Create event
+          </button>
+          <button className="button secondary" onClick={exploreDemo}>
+            Explore the demo
+          </button>
+        </div>
+        <span className="hint">No account needed. Your data stays on your device.</span>
+      </section>
+    );
+  return <EventOverview event={event} navigate={navigate} />;
+}
+function EventOverview({
+  event,
+  navigate,
+}: {
+  event: ScoutEvent;
+  navigate: (page: string) => void;
+}) {
+  const { workspace, setPreferences } = useWorkspace();
+  const summaries = useEventStats(event, workspace.data.matches);
+  const rows = workspace.data.matches.filter((match) => match.eventId === event.id);
+  const pits = new Set(
+    workspace.data.pits.filter((pit) => pit.eventId === event.id).map((pit) => pit.team),
+  );
+  const covered = new Set(rows.map((match) => match.team));
+  const issues = [...summaries.values()].reduce((sum, team) => sum + team.conflicts, 0);
+  const ranked = event.teams
+    .map((team) => ({ ...team, stats: summaries.get(team.number)! }))
+    .filter((team) => team.stats.matches)
+    .sort((a, b) => b.stats.average - a.stats.average);
+  const recent = [...rows].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 4);
+  const next = nextAssignment(
+    event,
+    workspace.preferences.station || '',
+    rows,
+    workspace.preferences.scout,
+  );
+  const backupDue =
+    rows.length > 0 &&
+    (!workspace.preferences.lastBackupAt ||
+      Date.now() - Date.parse(workspace.preferences.lastBackupAt) > 4 * 60 * 60 * 1000);
+  function backup() {
+    download(
+      JSON.stringify(bundle(workspace.data, 'workspace', workspace.drafts)),
+      'alliancelab-backup.json',
+    );
+    setPreferences({ lastBackupAt: now() });
+  }
+  return (
+    <>
+      <PageHeading
+        eyebrow={event.season + ' EVENT'}
+        title={event.name}
+        description={[
+          event.location,
+          new Intl.DateTimeFormat('en-US', {
+            month: 'short',
+            day: 'numeric',
+            timeZone: 'UTC',
+          }).format(new Date(event.date + 'T12:00:00Z')),
+        ]
+          .filter(Boolean)
+          .join(' · ')}
+        action={
+          <button className="button primary" onClick={() => navigate('scout')}>
+            <Plus size={18} />
+            Scout a match
+          </button>
+        }
+      />
+      <div className="stats-grid">
+        <Stat
+          label="Match observations"
+          value={rows.length}
+          detail={
+            new Set(rows.map((row) => `${row.team}:${row.match}`)).size +
+            ' distinct team–match pairs'
+          }
+        />
+        <Stat
+          label="Teams scouted"
+          value={`${covered.size} / ${event.teams.length}`}
+          detail="Teams with match observations"
+        />
+        <Stat
+          label="Pit visits"
+          value={`${pits.size} / ${event.teams.length}`}
+          detail="Teams with saved pit notes"
+        />
+      </div>
+      {issues > 0 && (
+        <div className="notice amber">
+          <AlertTriangle size={19} />
+          <span>{issues} conflicting team–match pairs need review.</span>
+          <button className="text-button" onClick={() => navigate('scout')}>
+            Review observations
+            <ArrowRight size={16} />
+          </button>
+        </div>
+      )}
+      {next && (
+        <section className="next-match">
+          <div>
+            <span className="hint">YOUR NEXT ASSIGNMENT</span>
+            <h2>
+              Q{next.match} · Team {next.team}
+            </h2>
+            <p>
+              {next.alliance === 'red' ? 'Red' : 'Blue'} station {next.station}
+            </p>
+          </div>
+          <button className="button secondary" onClick={() => navigate('scout')}>
+            Open scouting
+            <ArrowRight size={17} />
+          </button>
+        </section>
+      )}
+      <section className="panel">
+        <PanelTitle
+          title="Teams at a glance"
+          description="Average weighted scouting total"
+          action={
+            <button className="text-button" onClick={() => navigate('teams')}>
+              View teams
+              <ArrowRight size={16} />
+            </button>
+          }
+        />
+        {ranked.length ? (
+          <div className="leaderboard">
+            {ranked.slice(0, 5).map((team) => (
+              <div className="leader-row" key={team.number}>
+                <div className="leader-team">
+                  <strong>{team.number}</strong>
+                  <span>{team.name || 'Team ' + team.number}</span>
+                </div>
+                <span className="leader-bar">
+                  <i
+                    style={{
+                      width:
+                        Math.max(
+                          1,
+                          (team.stats.average / Math.max(1, ranked[0].stats.average)) * 100,
+                        ) + '%',
+                    }}
+                  />
+                </span>
+                <div className="leader-score">
+                  <strong>{fmt(team.stats.average)}</strong>
+                  <small>{team.stats.matches} matches</small>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="quiet-empty">
+            <ClipboardList size={28} />
+            <h3>Your first observation starts here.</h3>
+            <p>Record a match to see team averages and comparisons.</p>
+          </div>
+        )}
+        <p className="hint panel-foot">
+          Conflicting observations are excluded. Small samples need a closer look.
+        </p>
+      </section>
+      {backupDue && (
+        <div className="backup-reminder">
+          <div>
+            <strong>Keep a copy outside your browser.</strong>
+            <p>Back up your observations and drafts after each session.</p>
+          </div>
+          <button className="button secondary" onClick={backup}>
+            <Download size={17} />
+            Back up now
+          </button>
+        </div>
+      )}
+      {recent.length > 0 && (
+        <details className="panel optional-section">
+          <summary>Recent observations</summary>
+          <div className="recent-list">
+            {recent.map((match) => (
+              <div className="recent-row" key={match.id}>
+                <span className={'match-avatar ' + match.alliance}>Q{match.match}</span>
+                <div>
+                  <strong>Team {match.team}</strong>
+                  <span>
+                    {match.scout}
+                    {match.notes ? ' · ' + match.notes : ''}
+                  </span>
+                </div>
+                <Tag>{match.disabled ? 'Disabled' : 'Recorded'}</Tag>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+    </>
+  );
 }
