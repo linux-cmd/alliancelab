@@ -23,7 +23,7 @@ import Scanner from '../components/Scanner';
 import { PageHeading, PanelTitle, Modal, Tag, fmt } from '../components/ui';
 
 export default function Transfer({ event }: { event?: ScoutEvent }) {
-  const { workspace, setData, setPreferences, replaceDrafts, notify } = useWorkspace();
+  const { workspace, setData, setPreferences, notify } = useWorkspace();
   const [tab, setTab] = useState<'files' | 'qr'>('files');
   const [error, setError] = useState('');
   const [incoming, setIncoming] = useState<Bundle | null>(null);
@@ -158,8 +158,13 @@ export default function Transfer({ event }: { event?: ScoutEvent }) {
   }
   function apply() {
     if (!incoming || (mode === 'merge' && !preview)) return;
-    if (!setData(mode === 'replace' ? incoming.data : preview!.data)) return;
-    if (mode === 'replace') replaceDrafts(incoming.localDrafts || {});
+    if (
+      !setData(
+        mode === 'replace' ? incoming.data : preview!.data,
+        mode === 'replace' ? incoming.localDrafts || {} : undefined,
+      )
+    )
+      return;
     if (mode === 'replace' || !event)
       setPreferences({ selectedEvent: incoming.data.events[0]?.id || '' });
     notify(

@@ -17,7 +17,8 @@ import {
 } from 'lucide-react';
 import { WorkspaceContext } from './context';
 import type { Data, Preferences, Workspace } from './domain';
-import { BundleSchema, bundle, MAX_BACKUP_BYTES } from './domain';
+import { BundleSchema, bundle } from './domain';
+import { withinBackupLimit } from './workspace';
 import {
   announceSave,
   blankWorkspace,
@@ -126,6 +127,8 @@ export default function App() {
 
 function WorkspaceApp({ initial }: { initial: LoadedWorkspace }) {
   const [workspace, setWorkspace] = useState<Workspace>(initial.workspace);
+  const currentWorkspace = useRef(workspace);
+  currentWorkspace.current = workspace;
   const [readOnly, setReadOnly] = useState(!!initial.error);
   const [storageError, setStorageError] = useState(initial.error || '');
   const [externalChange, setExternalChange] = useState(false);
@@ -165,8 +168,23 @@ function WorkspaceApp({ initial }: { initial: LoadedWorkspace }) {
     toastTimer.current = setTimeout(() => setToast(''), 5000);
   }, []);
 
+  const commitWorkspace = useCallback(
+    (change: (old: Workspace) => Workspace) => {
+      const next = change(currentWorkspace.current);
+      if (!withinBackupLimit(next)) {
+        notify(
+          'The complete workspace backup would exceed 50 MB. Export and archive an older event first.',
+        );
+        return false;
+      }
+      currentWorkspace.current = next;
+      setWorkspace(next);
+      return true;
+    },
+    [notify],
+  );
   const setData = useCallback(
-    (data: Data) => {
+    (data: Data, drafts?: Workspace['drafts']) => {
       if (paused.current) {
         notify('Saving is paused. Download your work and resolve the storage notice first.');
         return false;
@@ -176,22 +194,13 @@ function WorkspaceApp({ initial }: { initial: LoadedWorkspace }) {
         notify('Unable to save: ' + checked.error.issues[0].message);
         return false;
       }
-      if (
-        new TextEncoder().encode(JSON.stringify(bundle(checked.data.data))).length >
-        MAX_BACKUP_BYTES
-      ) {
-        notify(
-          'This workspace exceeds the 50 MB backup limit. Export and archive an older event first.',
-        );
-        return false;
-      }
-      setWorkspace((old) => {
+      return commitWorkspace((old) => {
         const ids = new Set(checked.data.data.events.map((item) => item.id));
         return {
           ...old,
           data: checked.data.data,
           drafts: Object.fromEntries(
-            Object.entries(old.drafts).filter(([key]) => ids.has(key.split(':')[1])),
+            Object.entries(drafts ?? old.drafts).filter(([key]) => ids.has(key.split(':')[1])),
           ),
           preferences: {
             ...old.preferences,
@@ -201,32 +210,27 @@ function WorkspaceApp({ initial }: { initial: LoadedWorkspace }) {
           },
         };
       });
-      return true;
     },
-    [notify],
+    [notify, commitWorkspace],
   );
   const setPreferences = useCallback(
     (patch: Partial<Preferences>) =>
-      setWorkspace((old) => ({ ...old, preferences: { ...old.preferences, ...patch } })),
-    [],
+      commitWorkspace((old) => ({ ...old, preferences: { ...old.preferences, ...patch } })),
+    [commitWorkspace],
   );
   const setDraft = useCallback(
     (key: string, value: unknown) =>
-      setWorkspace((old) => ({ ...old, drafts: { ...old.drafts, [key]: value } })),
-    [],
+      commitWorkspace((old) => ({ ...old, drafts: { ...old.drafts, [key]: value } })),
+    [commitWorkspace],
   );
   const clearDraft = useCallback(
     (key: string) =>
-      setWorkspace((old) => {
+      commitWorkspace((old) => {
         const drafts = { ...old.drafts };
         delete drafts[key];
         return { ...old, drafts };
       }),
-    [],
-  );
-  const replaceDrafts = useCallback(
-    (drafts: Workspace['drafts']) => setWorkspace((old) => ({ ...old, drafts })),
-    [],
+    [commitWorkspace],
   );
 
   const persist = useCallback((snapshot: Workspace) => {
@@ -417,7 +421,7 @@ function WorkspaceApp({ initial }: { initial: LoadedWorkspace }) {
   const needsEvent = ['scout', 'teams', 'planner'].includes(page) && !event;
   return (
     <WorkspaceContext.Provider
-      value={{ workspace, setData, setPreferences, setDraft, clearDraft, replaceDrafts, notify }}
+      value={{ workspace, setData, setPreferences, setDraft, clearDraft, notify }}
     >
       <a
         className="skip-link"

@@ -41,8 +41,7 @@ export default function Planner({ event }: { event: ScoutEvent }) {
   const [comparison, setComparison] = useState(false);
   function setPlan(next: typeof plan | ((old: typeof plan) => typeof plan)) {
     const value = typeof next === 'function' ? next(plan) : next;
-    updatePlan(value);
-    setDraft('planner:' + event.id, value);
+    if (setDraft('planner:' + event.id, value)) updatePlan(value);
   }
   const summaries = useEventStats(event, workspace.data.matches);
   const ranking = rankTeams(

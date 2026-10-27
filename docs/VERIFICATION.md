@@ -3,7 +3,7 @@
 Local checks completed on 2026-10-26 (America/Chicago), using Node 24 and the production build.
 
 - Formatting, TypeScript, Vite build, and offline-shell generation passed.
-- 30 unit tests passed, including v1 migration, IndexedDB transactions and rollback, stale writers, previous snapshots, schedule parsing, duplicate/conflicting observations, QR transport, and a 500-team / 50,000-observation analytics fixture.
+- 32 unit tests passed, including v1 migration, IndexedDB transactions and rollback, stale writers, previous snapshots, complete backup byte limits, schedule parsing, duplicate/conflicting observations, QR transport, and a 500-team / 50,000-observation analytics fixture.
 - 40 browser cases passed across desktop Chromium and an emulated iPhone viewport, with no retries or skipped cases.
 - Main screens and expanded scouting, planning, and dialog controls passed the included WCAG A/AA axe checks and viewport checks.
 - Scouting checks covered match entry/editing, pit drafts across team changes, immediate navigation, offline reload, reviewed schedules, station queues, version 1 migration, workspace-draft restore, failed browser writes, and paused saves that preserve forms.
@@ -23,7 +23,7 @@ The public deployment at https://alliancelab.vercel.app was verified on 2026-10-
 - The upgrade flow reported zero uncaught application errors. HTTP 200 and the configured Content-Security-Policy were checked at the public origin.
 - The GitHub check for the same source commit passed: [workflow run 40442252219](https://github.com/linux-cmd/alliancelab/actions/runs/40442252219).
 
-The release gates also verify that keyboard skip navigation preserves the current screen and focuses its content. The final tag pipeline repeats the checks before packaging.
+The release gates also verify that keyboard skip navigation preserves the current screen and that the next scheduled match survives navigation and reload. Saved data and drafts are committed together and measured against the complete UTF-8 backup budget. The final tag pipeline repeats the checks before packaging.
 
 ## Device limits
 

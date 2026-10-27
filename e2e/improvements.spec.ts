@@ -93,13 +93,13 @@ test('reviewed schedule import fills the station queue and advances to the next 
   await page.getByLabel('Import schedule CSV', { exact: true }).setInputFiles({
     name: 'schedule.csv',
     mimeType: 'text/csv',
-    buffer: Buffer.from('match,team,alliance,station\n1,6901,red,1\n2,254,red,1\n1,118,blue,1'),
+    buffer: Buffer.from('match,team,alliance,station\n1,6901,blue,1\n2,254,blue,1\n1,118,red,1'),
   });
   await expect(page.getByRole('heading', { name: 'Review 3 assignments' })).toBeVisible();
   await page.getByRole('button', { name: 'Save schedule', exact: true }).click();
   await navigate(page, 'Scout');
   await page.getByLabel('Scout name', { exact: true }).fill('Schedule scout');
-  await page.getByLabel('Scouting station', { exact: true }).selectOption('red-1');
+  await page.getByLabel('Scouting station', { exact: true }).selectOption('blue-1');
   await expect(page.getByLabel('Match team', { exact: true })).toHaveValue('6901');
   await page.getByRole('button', { name: 'Save observation', exact: true }).click();
   await expect(page.getByRole('status')).toContainText('Match Q1 saved');
@@ -107,6 +107,27 @@ test('reviewed schedule import fills the station queue and advances to the next 
   await expect(page.getByLabel('Qualification match', { exact: true })).toHaveValue('2');
   await navigate(page, 'Home');
   await expect(page.getByRole('heading', { name: 'Q2 · Team 254' })).toBeVisible();
+  await navigate(page, 'Scout');
+  await expect(page.getByLabel('Match team', { exact: true })).toHaveValue('254');
+  await expect(page.getByLabel('Qualification match', { exact: true })).toHaveValue('2');
+  await expect(page.getByRole('button', { name: 'Blue', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await expect
+    .poll(async () =>
+      Object.values((await current(page))?.drafts || {}).some(
+        (draft) => (draft as { match?: number }).match === 2,
+      ),
+    )
+    .toBe(true);
+  await page.reload();
+  await expect(page.getByLabel('Match team', { exact: true })).toHaveValue('254');
+  await expect(page.getByLabel('Qualification match', { exact: true })).toHaveValue('2');
+  await expect(page.getByRole('button', { name: 'Blue', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
 });
 
 test('legacy v1 workspace migrates intact and retains the original browser copy', async ({

@@ -15,7 +15,7 @@ AllianceLab is a static React/TypeScript application built with Vite. No runtime
 
 ## State and persistence
 
-React holds saved data, preferences, and drafts. A data mutation returns success or failure; a rejected mutation leaves the form intact and cannot trigger a success reset. Drafts update in shared state immediately, so navigating away does not cancel a pending component debounce.
+React holds saved data, preferences, and drafts. A data mutation returns success or failure; a rejected mutation leaves the form intact and cannot trigger a success reset. Drafts update in shared state immediately, so navigating away does not cancel a pending component debounce. Saved observations and their next form are committed atomically. Every mutation is bounded against the complete UTF-8 backup, including local drafts; immutable saved-data sizes are cached so draft checks do not repeatedly serialize all observations.
 
 The IndexedDB database `alliancelab`, object store `workspace`, contains `current` and `previous`. Each write transaction checks the expected revision before updating. A stale writer is rejected atomically. Writes are serialized in the tab, and storage/BroadcastChannel messages pause another tab. Origin notifications contain only a revision and a per-tab ID.
 

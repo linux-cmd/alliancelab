@@ -70,8 +70,13 @@ export default function Scout({ event }: { event: ScoutEvent }) {
   const compatible = matchesMetrics(form, event);
   function update(patch: Partial<Match>) {
     const next = { ...form, ...patch };
+    if (!setDraft(draftKey, next)) {
+      setError(
+        'This draft would exceed the backup limit. Export and archive an older event first.',
+      );
+      return;
+    }
     setForm(next);
-    setDraft(draftKey, next);
     setError('');
   }
   function value(metric: string, number: number, max = 10000) {
@@ -128,13 +133,28 @@ export default function Scout({ event }: { event: ScoutEvent }) {
       return;
     }
     const record = result.data;
+    const next = nextAssignment(event, station, [...rows, record], record.scout, record.match);
+    const nextForm = editing
+      ? loadDraft('match:' + event.id, freshMatch(event, record.scout))
+      : {
+          ...freshMatch(event, record.scout),
+          team: next?.team || record.team,
+          match: next?.match || Math.min(9999, record.match + 1),
+          alliance: next?.alliance || record.alliance,
+        };
+    const nextDrafts = { ...workspace.drafts };
+    delete nextDrafts[draftKey];
+    nextDrafts['match:' + event.id] = nextForm;
     if (
-      !setData({
-        ...workspace.data,
-        matches: editing
-          ? workspace.data.matches.map((match) => (match.id === editing ? record : match))
-          : [...workspace.data.matches, record],
-      })
+      !setData(
+        {
+          ...workspace.data,
+          matches: editing
+            ? workspace.data.matches.map((match) => (match.id === editing ? record : match))
+            : [...workspace.data.matches, record],
+        },
+        nextDrafts,
+      )
     ) {
       setError(
         'The observation was not saved. Your draft is still here. Check the workspace notice.',
@@ -142,21 +162,10 @@ export default function Scout({ event }: { event: ScoutEvent }) {
       return;
     }
     setPreferences({ scout: record.scout });
-    clearDraft(draftKey);
     notify(
       editing ? 'Observation updated.' : `Match Q${record.match} saved for team ${record.team}.`,
     );
-    const next = nextAssignment(event, station, [...rows, record], record.scout, record.match);
-    setForm(
-      editing
-        ? loadDraft('match:' + event.id, freshMatch(event, record.scout))
-        : {
-            ...freshMatch(event, record.scout),
-            team: next?.team || record.team,
-            match: next?.match || Math.min(9999, record.match + 1),
-            alliance: next?.alliance || record.alliance,
-          },
-    );
+    setForm(nextForm);
     setEditing(null);
     setError('');
   }
@@ -661,7 +670,7 @@ export default function Scout({ event }: { event: ScoutEvent }) {
 }
 
 function PitForm({ event }: { event: ScoutEvent }) {
-  const { workspace, setData, setPreferences, setDraft, clearDraft, notify } = useWorkspace();
+  const { workspace, setData, setPreferences, setDraft, notify } = useWorkspace();
   function load(team: number): Pit {
     const draft = PitDraftSchema.safeParse(workspace.drafts[`pit:${event.id}:${team}`]);
     if (draft.success && draft.data.eventId === event.id && draft.data.team === team)
@@ -688,8 +697,13 @@ function PitForm({ event }: { event: ScoutEvent }) {
   const [error, setError] = useState('');
   function update(patch: Partial<Pit>) {
     const next = { ...form, ...patch };
+    if (!setDraft(`pit:${event.id}:${form.team}`, next)) {
+      setError(
+        'This draft would exceed the backup limit. Export and archive an older event first.',
+      );
+      return;
+    }
     setForm(next);
-    setDraft(`pit:${event.id}:${form.team}`, next);
     setError('');
   }
   function save(e: React.FormEvent) {
@@ -700,18 +714,22 @@ function PitForm({ event }: { event: ScoutEvent }) {
       return;
     }
     const record = result.data;
+    const nextDrafts = { ...workspace.drafts };
+    delete nextDrafts[`pit:${event.id}:${record.team}`];
     if (
-      !setData({
-        ...workspace.data,
-        pits: workspace.data.pits.some((pit) => pit.id === record.id)
-          ? workspace.data.pits.map((pit) => (pit.id === record.id ? record : pit))
-          : [...workspace.data.pits, record],
-      })
+      !setData(
+        {
+          ...workspace.data,
+          pits: workspace.data.pits.some((pit) => pit.id === record.id)
+            ? workspace.data.pits.map((pit) => (pit.id === record.id ? record : pit))
+            : [...workspace.data.pits, record],
+        },
+        nextDrafts,
+      )
     ) {
       setError('Unable to save. Your pit draft is preserved.');
       return;
     }
-    clearDraft(`pit:${event.id}:${record.team}`);
     setForm(record);
     setPreferences({ scout: record.scout });
     notify('Pit notes saved for team ' + record.team + '.');
